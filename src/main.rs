@@ -1,32 +1,32 @@
 use std::process::exit;
-use std::collections::HashMap;
 
 mod rustybox;
 mod cat;
+mod false_fn;
+mod yes;
 
 use rustybox::RBox;
-
-use cat::cat;
 
 fn main() {
     let mut rbox = RBox::new();
 
-    rbox.add_func("cat", Box::new(cat));
+    rbox.add_func(cat::binding());
+    rbox.add_func(false_fn::binding());
+    rbox.add_func(yes::binding());
 
-    let functionMap: HashMap<String, i32> = HashMap::new();
     let mut args = std::env::args();
-    let mut invocation_path = args.next().unwrap();
-    let mut invocation_name = invocation_path.split('/').last().unwrap();
-    match invocation_name {
-        "rustybox" => {
-            if let Some(next_name) = args.next() {
-                exit(rbox.call(next_name, args));
-            } else {
-                exit(rbox.usage())
+    let invocation_path = args.next().unwrap();
+    let invocation_name = invocation_path.split('/').last().unwrap();
+    exit(match invocation_name {
+            "rustybox" => {
+                if let Some(next_name) = args.next() {
+                    rbox.call(next_name, args)
+                } else {
+                    rbox.usage()
+                }
+            },
+            _ => {
+                rbox.call(invocation_name, args)
             }
-        },
-        _ => {
-            exit(rbox.call(invocation_name, args));
-        }
-    }
+        });
 }

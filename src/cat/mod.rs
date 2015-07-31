@@ -3,24 +3,43 @@ use std::fs::File;
 use std::io::copy;
 use std::io::empty;
 use std::io::Read;
-use std::io::Error;
 use std::io::stdout;
+use std::io::stdin;
+use rustybox::Function;
 
-pub fn cat(args: Args) -> i32 {
+pub fn binding() -> (&'static str, Function) {
+    ("cat", Box::new(cat))
+}
+
+fn cat(args: Args) -> i32 {
     let mut rd: Box<Read> = {
-        let mut outRd: Box<Read> = Box::new(empty());
+        let mut files = false;
+        let mut out_rd: Box<Read> = Box::new(empty());
         for fname in args {
-            let fRes = File::open(fname.clone());
-            match fRes {
-                Ok(file) => outRd = Box::new(outRd.chain(file)),
-                Err(error) => {
-                    println!("cat: {}: {}", fname, error);
-                    return -1;
-                },
+            if fname == "-" {
+                out_rd = Box::new(out_rd.chain(stdin()));
+            } else {
+                let f_res = File::open(fname.clone());
+                match f_res {
+                    Ok(file) => out_rd = Box::new(out_rd.chain(file)),
+                    Err(error) => {
+                        println!("cat: {}: {}", fname, error);
+                        return -1;
+                    },
+                }
             }
         }
-        outRd
+        if files {
+            out_rd
+        } else {
+            Box::new(stdin())
+        }
     };
-    copy(&mut rd, &mut stdout());
-    0
+    match copy(&mut rd, &mut stdout()) {
+        Ok(_) => 0,
+        Err(error) => {
+            println!("cat: {}", error);
+            -1
+        }
+    }
 }
